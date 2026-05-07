@@ -2,6 +2,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
+from users.models import Favorite, Subscription
+
 User = get_user_model()
 
 
@@ -56,3 +58,55 @@ def test_me_returns_current_user_profile():
     assert resp.status_code == 200
     assert resp.data["email"] == "me@example.com"
     assert resp.data["username"] == "meuser"
+
+
+# новые тесты (2 этап)
+
+
+@pytest.fixture
+def auth_client():
+    # Фикстура для создания клиента с JWT токеном
+    client = APIClient()
+    user = User.objects.create_user(
+        email="test2@example.com",
+        username="test2",
+        password="123"
+    )
+    # Получаем токен
+    response = client.post("/auth/login/", {"email": "test2@example.com", "password": "123"})
+    token = response.data["access"]
+    # Прописываем токен в заголовки клиента
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+    return client, user
+
+
+@pytest.mark.django_db
+def test_add_to_favorite(auth_client):
+    # Тест: добавление рецепта в избранное
+    client, user = auth_client
+
+    # Пытаемся добавить рецепт с ID 5
+    response = client.post("/auth/favorites/5/")
+
+    assert response.status_code == 201
+    assert response.data["detail"] == "Рецепт добавлен в избранное"
+    assert Favorite.objects.filter(user=user, recipe_id=5).exists()
+
+
+@pytest.mark.django_db
+def test_subscribe_to_user(auth_client):
+    # Тест: подписка на другого пользователя
+    client, subscriber = auth_client
+
+    # Создаем автора, на которого будем подписываться
+    author = User.objects.create_user(
+        email="author@example.com",
+        username="author",
+        password="123"
+    )
+
+    response = client.post(f"/auth/{author.id}/subscribe/")
+
+    assert response.status_code == 201
+    assert response.data["detail"] == "Подписка успешно оформлена"
+    assert Subscription.objects.filter(subscriber=subscriber, author=author).exists()

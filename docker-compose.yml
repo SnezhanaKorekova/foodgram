@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   auth-db:
     image: postgres:16
@@ -14,7 +12,12 @@ services:
 
   auth-service:
     build: .
-    command: gunicorn auth_service.wsgi:application --bind 0.0.0.0:8001
+    # Ждем 5 секунд, создаём миграции, применяем их и запускаем сервер
+    command: >
+      sh -c "sleep 5 &&
+             python manage.py makemigrations &&
+             python manage.py migrate &&
+             gunicorn auth_service.wsgi:application --bind 0.0.0.0:8001"
     ports:
       - "8001:8001"
     environment:
