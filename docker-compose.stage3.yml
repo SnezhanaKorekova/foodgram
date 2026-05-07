@@ -5,8 +5,6 @@ services:
       POSTGRES_DB: auth_db
       POSTGRES_USER: auth_user
       POSTGRES_PASSWORD: auth_password
-    ports:
-      - "5433:5432"
     volumes:
       - auth_db_data:/var/lib/postgresql/data
 
@@ -17,8 +15,6 @@ services:
              python manage.py makemigrations &&
              python manage.py migrate &&
              gunicorn auth_service.wsgi:application --bind 0.0.0.0:8001"
-    ports:
-      - "8001:8001"
     environment:
       DB_NAME: auth_db
       DB_USER: auth_user
@@ -27,6 +23,27 @@ services:
       DB_PORT: 5432
     depends_on:
       - auth-db
+
+  recipes-service:
+    image: recipes-service:latest
+    expose:
+      - "8000"
+
+  meal-planner-service:
+    image: meal-planner-service:latest
+    expose:
+      - "8002"
+
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - recipes-service
+      - meal-planner-service
 
 volumes:
   auth_db_data:

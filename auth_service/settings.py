@@ -30,11 +30,14 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'djoser',
+    'corsheaders',  # CORS (ЛР4)
+    'drf_spectacular',  # Swagger (ЛР4)
     'users',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS (ЛР4)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -120,11 +123,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Кастомная модель пользователя
 AUTH_USER_MODEL = 'users.User'
 
-# DRF: по умолчанию используем JWT‑аутентификацию
+# DRF
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # Swagger (ЛР4)
+    'DEFAULT_THROTTLE_CLASSES': [  # Rate limiting
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/hour',  # Авторизованные: 100 запросов в час
+        'anon': '20/hour',   # Анонимные: 20 запросов в час
+    }
 }
 
 # SimpleJWT (сроки жизни токенов можно потом подправить)
@@ -137,4 +149,23 @@ SIMPLE_JWT = {
 DJOSER = {
     'USER_ID_FIELD': 'id',
     'LOGIN_FIELD': 'email',
+}
+
+# ==== CORS (для фронтенда) ====
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",      # React dev server
+    "http://localhost:5173",      # Vite dev server
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+CORS_ALLOW_CREDENTIALS = True
+
+# ==== drf-spectacular (Swagger/OpenAPI) ====
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Foodgram Auth Service API',
+    'DESCRIPTION': 'API микросервиса авторизации и управления пользователями для проекта Foodgram',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/auth',
 }
